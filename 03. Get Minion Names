@@ -1,0 +1,80 @@
+package app;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.Scanner;
+
+public class Engine implements Runnable {
+    private Connection connection;
+
+    public Engine(Connection connection) {
+        this.connection = connection;
+    }
+
+    public void run() {
+        try {
+            Scanner scanner = new Scanner(System.in);
+            int villain_id = Integer.parseInt(scanner.nextLine());
+
+            this.getVillainNameId(villain_id);
+            this.getMinionsNames(villain_id);
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void getVillainsNames() throws SQLException {
+        String queryString = "SELECT v.name, count(v2.minion_id) FROM villains AS v JOIN minions_villains v2 ON v.id = v2.villain_id GROUP BY v.name HAVING count(v2.minion_id) > ? ORDER BY count(v2.minion_id) DESC";
+        PreparedStatement ps = this.connection
+                .prepareStatement(queryString);
+
+        ps.setInt(1, 10);
+        ResultSet rs = ps.executeQuery();
+
+        while (rs.next()) {
+            System.out.println(String.format("%s %d",
+                    rs.getString("name"),
+                    rs.getInt(2)));
+        }
+    }
+
+    private void getMinionsNames(int villain_id) throws SQLException {
+        String queryString = "SELECT v.name AS  villain_name,v.id AS id, m.name AS minion_name, m.age AS minion_age FROM  villains AS v JOIN minions_villains mv on v.id = mv.villain_id JOIN minions m on mv.minion_id = m.id WHERE v.id = ?";
+        PreparedStatement ps = this.connection
+                .prepareStatement(queryString);
+
+        ps.setInt(1, villain_id);
+        ResultSet rs = ps.executeQuery();
+
+        if (rs.next() == false) {
+            System.out.println("<no minions>");
+        } else {
+
+            int counter = 1;
+            while (rs.next()) {
+                String name = rs.getString("minion_name");
+                Long age = rs.getLong("minion_age");
+
+                System.out.println(counter++ + ". " + name + " " + age);
+            }
+        }
+    }
+
+    private void getVillainNameId(int id) throws SQLException {
+        String queryString = "SELECT name FROM villains WHERE id = ?;";
+        PreparedStatement ps = this.connection
+                .prepareStatement(queryString);
+
+        ps.setInt(1, id);
+        ResultSet rs = ps.executeQuery();
+
+        if (rs.next() == false) {
+            System.out.println("No villain with ID " + id + " exists in the database.");
+        } else {
+            System.out.println("Villain: " + rs.getString(1));
+        }
+    }
+}
